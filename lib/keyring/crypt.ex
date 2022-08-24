@@ -1,53 +1,43 @@
 defmodule Keyring.Crypt do
-    @moduledoc """
-    Cryptography module for Keyring
-    """
+  @moduledoc """
+  Cryptography module for Keyring
+  """
 
-    alias Plug.Crypto.KeyGenerator, as: Pbkdf2
+  alias Plug.Crypto.KeyGenerator, as: Pbkdf2
 
-    @aes_auth_data "AES256GCM"
+  @kdf_salt_bytes 16
+  @aes_iv_bytes 16
+  @aes_key_length_bytes 32
+  @aes_auth_data "AES256GCM"
 
-    def encrypt_key(master_key, cleartext) do
-        #kdf_salt = Pbkdf2.Base.gen_salt(salt_len: 16) 
-        kdf_salt = :crypto.strong_rand_bytes(16)
-        #aes_key = Pbkdf2.Base.hash_password(master_key, kdf_salt, digest: :sha256)
-        aes_key = Pbkdf2.generate(master_key, kdf_salt, length: 32)
-        |> :base64.encode()
-        {aes_256_gcm_encrypt(cleartext, aes_key), kdf_salt}
-    end
+  @spec encrypt_key(binary(), String.t()) :: {binary(), binary()}
+  def encrypt_key(master_key, cleartext) do
+    kdf_salt = :crypto.strong_rand_bytes(@kdf_salt_bytes)
+    aes_key = Pbkdf2.generate(master_key, kdf_salt, length: @aes_key_length_bytes)
+    {aes_256_gcm_encrypt(cleartext, aes_key), kdf_salt}
+  end
 
-    def decrypt_key(master_key, {ciphertext, kdf_salt}) do
-        #aes_key = Pbkdf2.Base.hash_password(master_key, kdf_salt, digest: :sha256)
-        aes_key = Pbkdf2.generate(master_key, kdf_salt, length: 32)
-        |> :base64.encode()
-        aes_256_gcm_decrypt(ciphertext, aes_key)
-    end
+  @spec decrypt_key(binary(), {binary(), binary()}) :: String.t()
+  def decrypt_key(master_key, {ciphertext, kdf_salt}) do
+    aes_key = Pbkdf2.generate(master_key, kdf_salt, length: @aes_key_length_bytes)
+    aes_256_gcm_decrypt(ciphertext, aes_key)
+  end
 
-    defp aes_256_gcm_encrypt(cleartext, aes_key) do
-        aes_key = :base64.decode(aes_key)
-        iv = :crypto.strong_rand_bytes(16)
+  @spec aes_256_gcm_encrypt(String.t(), binary()) :: binary()
+  defp aes_256_gcm_encrypt(cleartext, aes_key) do
+    iv = :crypto.strong_rand_bytes(@aes_iv_bytes)
 
-        {ciphertext, icv} =
-            :crypto.crypto_one_time_aead(:aes_256_gcm, aes_key, iv, cleartext, @aes_auth_data, true)
-        iv <> icv <> ciphertext
-        |> :base64.encode()
+    {ciphertext, icv} =
+      :crypto.crypto_one_time_aead(:aes_256_gcm, aes_key, iv, cleartext, @aes_auth_data, true)
+    iv <> icv <> ciphertext
+    |> :base64.encode()
+  end
 
+  @spec aes_256_gcm_decrypt(binary(), binary()) :: String.t()
+  defp aes_256_gcm_decrypt(ciphertext, aes_key) do
+    ciphertext = :base64.decode(ciphertext)
+    <<iv::binary-16, icv::binary-16, ciphertext::binary>> = ciphertext
 
-        #payload = {@aes_auth_data, to_string(cleartext), 16}
-        #{ciphertext, icv} = :crypto.block_encrypt(:aes_gcm, aes_key, payload)
-        #iv <> icv <> ciphertext
-        #|> :base64.encode()
-    end
-
-    defp aes_256_gcm_decrypt(ciphertext, aes_key) do
-        aes_key = :base64.decode(aes_key)
-        ciphertext = :base64.decode(ciphertext)
-        <<iv::binary-16, icv::binary-16, ciphertext::binary>> = ciphertext
-
-        :crypto.crypto_one_time_aead(:aes_256_gcm, aes_key, iv, ciphertext, @aes_auth_data, icv, false)
-
-
-        #payload = {@aes_auth_data, ciphertext, icv}
-        #:crypto.block_decrypt(:aes_gcm, aes_key, iv, payload)
-    end
+    :crypto.crypto_one_time_aead(:aes_256_gcm, aes_key, iv, ciphertext, @aes_auth_data, icv, false)
+  end
 end
