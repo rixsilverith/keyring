@@ -1,34 +1,24 @@
 defmodule Keyring do
   @moduledoc """
-  Keyring entry point module.
+  Keyring main module.
   """
 
   alias Keyring.Crypt
   alias Keyring.CLI
 
+  @master_key_hash_file "auth_token"
+
+  @doc """
+  Keyring CLI entry point.
+  """
   def main(argv) do
 
     argv |> CLI.parse() |> IO.inspect()
 
-    # test master key
-    if not File.exists?("master.key") do
-      plain = IO.gets("Enter master key: ")
-      master_kdf_salt = :crypto.strong_rand_bytes(32)
-      hash = master_kdf_salt <> Plug.Crypto.KeyGenerator.generate(plain, master_kdf_salt, length: 64)
-      hash = hash |> :base64.encode()
-      |> IO.inspect()
-
-      {:ok, io_device} = File.open("master.key", [:write])
-      IO.write(io_device, hash)
-      File.close(io_device)
-    else
-      IO.puts("Found master key! keyring is initialized")
-      {:ok, io_device} = File.open("master.key", [:read])
-      master_hash = IO.read(io_device, :line)
-      File.close(io_device)
-      IO.puts(master_hash)
-
-      authenticate(master_hash)
+    case is_initialized?() do
+      #false -> request_keyring_initialization()
+      false -> initialize_keyring()
+      _ -> retrieve_master_key() |> authenticate()
     end
 
     """
@@ -44,6 +34,7 @@ defmodule Keyring do
 
     #test
 
+    """
     master = "HeyImA.HardcodedMasterKey345873485@~@/"
     plaintext_pass = IO.gets("Key to encrypt: ")
     {encrypted_key, kdf_salt} = Crypt.encrypt_key(master, plaintext_pass)
@@ -52,8 +43,41 @@ defmodule Keyring do
     decrypted_key = Crypt.decrypt_key(master, {encrypted_key, kdf_salt})
     IO.puts("decrypted key is:")
     IO.inspect(decrypted_key)
+    """
+  end
 
+  defp is_initialized?, do: File.exists?(@master_key_hash_file)
 
+  defp request_keyring_initialization do
+    IO.puts("keyring has not been initialized. Please, run `keyring init` before performing any other operation.")
+    System.halt(1)
+  end
+
+  defp initialize_keyring do
+    if is_initialized? do
+      IO.puts("keyring has already been initialized.")
+      System.halt(0)
+    end
+
+    {:ok, io_device} = File.open(@master_key_hash_file, [:write])
+
+    input_master_key = IO.gets("Enter the master key that will be used to unlock the keyring vault: ")
+    {master_key_hash, kdf_salt} = Crypt.pbkdf2_hash(input_master_key, 32, 64)
+
+    master_hash = kdf_salt <> master_key_hash
+    master_hash = :base64.encode(master_hash)
+    IO.write(io_device, master_hash)
+    File.close(io_device)
+
+    IO.puts("keyring has been successfully initialized")
+    System.halt(0)
+  end
+
+  defp retrieve_master_key do
+    {:ok, io_device} = File.open(@master_key_hash_file, [:read])
+    master_hash = IO.read(io_device, :line)
+    File.close(io_device)
+    master_hash
   end
 
   defp authenticate(master_hash) do
@@ -61,7 +85,8 @@ defmodule Keyring do
     <<master_kdf_salt::binary-32, master_key_hash::binary-64>> = master_hash
 
     input_master_key = IO.gets("Enter master key to unlock keyring vault: ")
-    input_master_key_hash = Plug.Crypto.KeyGenerator.generate(input_master_key, master_kdf_salt, length: 64)
+    input_master_key_hash = Crypt.pbkdf2_hash(input_master_key, master_kdf_salt, 64)
+    #input_master_key_hash = Plug.Crypto.KeyGenerator.generate(input_master_key, master_kdf_salt, length: 64)
 
     master_key_hash = :base64.encode(master_key_hash)
     input_master_key_hash = :base64.encode(input_master_key_hash)

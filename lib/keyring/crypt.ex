@@ -1,6 +1,6 @@
 defmodule Keyring.Crypt do
   @moduledoc """
-  Cryptography module for Keyring
+  Cryptography module for Keyring.
   """
 
   alias Plug.Crypto.KeyGenerator, as: Pbkdf2
@@ -9,6 +9,16 @@ defmodule Keyring.Crypt do
   @aes_iv_bytes 16
   @aes_key_length_bytes 32
   @aes_auth_data "AES256GCM"
+
+  def pbkdf2_hash(cleartext, salt, hash_len) when is_binary(salt) do
+    Pbkdf2.generate(cleartext, salt, length: hash_len)
+  end
+
+  def pbkdf2_hash(cleartext, salt_len, hash_len) when is_number(salt_len) do
+    kdf_salt = :crypto.strong_rand_bytes(salt_len)
+    hash = Pbkdf2.generate(cleartext, kdf_salt, length: hash_len)
+    {hash, kdf_salt}
+  end
 
   @spec encrypt_key(binary(), String.t()) :: {binary(), binary()}
   def encrypt_key(master_key, cleartext) do
