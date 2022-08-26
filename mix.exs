@@ -16,6 +16,6 @@ defmodule Keyring.MixProject do
 
   defp deps do
     [{:plug_crypto, "~> 1.0"},
-      {:optimus, "~> 0.2"}]
+      {:ok, "~> 2.3"}]
   end
 end

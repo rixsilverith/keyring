@@ -3,8 +3,12 @@ defmodule Keyring do
   Keyring main module.
   """
 
+  require OK
+  use OK.Pipe
+
   alias Keyring.Crypt
   alias Keyring.CLI
+  alias Keyring.Vault
 
   @master_key_hash_file "auth_token"
 
@@ -12,41 +16,55 @@ defmodule Keyring do
   Keyring CLI entry point.
   """
   def main(argv) do
+    Application.put_env(:elixir, :ansi_enabled, true)
+
+    CLI.help()
 
     argv |> CLI.parse() |> IO.inspect()
 
-    case is_initialized?() do
-      #false -> request_keyring_initialization()
-      false -> initialize_keyring()
-      _ -> retrieve_master_key() |> authenticate()
-    end
-
-    """
     argv = CLI.parse(argv)
     case argv do
-      {[:init], args} ->
+      {:init, _, _} ->
+        case is_initialized?() do
+          {:ok, _} -> {:error, :keyring_already_initialized} |> error_handler()
+          {:error, _} -> initialize_keyring() |> error_handler()
+        end
 
-      {[:insert], args} ->
+      {:insert, key_name, args} ->
+        is_initialized?() ~>> authenticate() ~>> Vault.insert_key(key_name, args) |> error_handler()
 
-      {[:reveal], args} ->
+      {:reveal, key_name, args} ->
+        is_initialized?() ~>> authenticate() ~>> Vault.retrieve_key(key_name, args) |> error_handler()
+
+      other -> argv
     end
-    """
-
-    #test
-
-    """
-    master = "HeyImA.HardcodedMasterKey345873485@~@/"
-    plaintext_pass = IO.gets("Key to encrypt: ")
-    {encrypted_key, kdf_salt} = Crypt.encrypt_key(master, plaintext_pass)
-    IO.write("Encrypted key: ")
-    IO.inspect(encrypted_key)
-    decrypted_key = Crypt.decrypt_key(master, {encrypted_key, kdf_salt})
-    IO.puts("decrypted key is:")
-    IO.inspect(decrypted_key)
-    """
   end
 
-  defp is_initialized?, do: File.exists?(@master_key_hash_file)
+  defp error_handler(result) do
+    case result do
+      {:error, :incorrect_master_key} ->
+        [:bright, :red, "! Error: ", :reset, "The provided master key is not correct. Please, try again."]
+        |> IO.ANSI.format() |> IO.puts()
+
+      {:error, :keyring_not_initialized} ->
+        [:bright, :red, "! Error: ", :reset, "keyring has not been initialized. ",
+         "Please, run ", :bright, "keyring init", :reset, " before performing any operation."]
+        |> IO.ANSI.format() |> IO.puts()
+
+      {:error, :keyring_already_initialized} ->
+        [:bright, :red, "! Error: ", :reset, "keyring has already been initialized."]
+        |> IO.ANSI.format() |> IO.puts()
+
+      {:ok, _} -> nil
+    end
+  end
+
+  defp is_initialized? do
+    case File.exists?(@master_key_hash_file) do
+      true -> {:ok, retrieve_master_key()}
+      false -> {:error, :keyring_not_initialized}
+    end
+  end
 
   defp request_keyring_initialization do
     IO.puts("keyring has not been initialized. Please, run `keyring init` before performing any other operation.")
@@ -54,11 +72,6 @@ defmodule Keyring do
   end
 
   defp initialize_keyring do
-    if is_initialized? do
-      IO.puts("keyring has already been initialized.")
-      System.halt(0)
-    end
-
     {:ok, io_device} = File.open(@master_key_hash_file, [:write])
 
     input_master_key = IO.gets("Enter the master key that will be used to unlock the keyring vault: ")
@@ -81,23 +94,20 @@ defmodule Keyring do
   end
 
   defp authenticate(master_hash) do
-    master_hash = :base64.decode(master_hash)
+    master_hash = master_hash |> :base64.decode()
     <<master_kdf_salt::binary-32, master_key_hash::binary-64>> = master_hash
 
     input_master_key = IO.gets("Enter master key to unlock keyring vault: ")
     input_master_key_hash = Crypt.pbkdf2_hash(input_master_key, master_kdf_salt, 64)
-    #input_master_key_hash = Plug.Crypto.KeyGenerator.generate(input_master_key, master_kdf_salt, length: 64)
 
     master_key_hash = :base64.encode(master_key_hash)
     input_master_key_hash = :base64.encode(input_master_key_hash)
 
     cond do
       master_key_hash == input_master_key_hash ->
-        IO.puts("Authenticated successfully")
-        :ok
+        {:ok, master_hash}
       true ->
-        IO.puts("Incorrect master key")
-        :error
+        {:error, :incorrect_master_key}
     end
   end
 end
