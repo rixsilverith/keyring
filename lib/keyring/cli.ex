@@ -32,8 +32,8 @@ defmodule Keyring.CLI do
   end
 
   defp parse_reveal_operation(opts) do
-    strict_opts = [help: :boolean, clipboard: :boolean]
-    aliases = [h: :help, c: :clipboard]
+    strict_opts = [help: :boolean, clipboard: :boolean, seconds: :integer]
+    aliases = [h: :help, c: :clipboard, s: :seconds]
 
     [key_name | opts] = opts
     {opts, _, _} = OptionParser.parse(opts, aliases: aliases, strict: strict_opts)

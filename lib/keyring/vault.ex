@@ -37,14 +37,28 @@ defmodule Keyring.Vault do
     plain_key = Keyring.Crypt.decrypt_key(master_hash, encrypted_key)
 
     if Keyword.get(opts, :clipboard) do
-      ["Copied ", :bright, key_name, :reset, " key to the clipboard! Clipboard will be cleaned in 5 secs"]
+      clipboard_secs = Keyword.get(opts, :seconds)
+      clipboard_secs = case clipboard_secs do
+        nil -> 30
+        _ -> clipboard_secs
+      end
+
+      ["Copied ", :bright, key_name, :reset, " key to the clipboard! Clipboard will be cleared in ",
+       :bright, "#{clipboard_secs}", :reset, " seconds"]
       |> IO.ANSI.format() |> IO.puts()
       plain_key |> Keyring.Utils.clipboard_copy()
 
+      {:ok, file} = File.open("clean_clipboard.sh", [:write])
+      IO.write(file, "sleep #{clipboard_secs}; xclip -sel clip < /dev/null")
+      File.close(file)
 
-      Port.open({:spawn, "sh lib/keyring/external/clean_clipboard.sh"}, [:binary])
+      # FIXME: For some reason, clean_clipboard.sh is not removed after cleaning the clipboard
+      # For now, this is just a minor inconvenience
+      Port.open({:spawn, "sh clean_clipboard.sh; rm clean_clipboard.sh"}, [:binary])
       |> Port.close()
     else
+      ["Retrieved key ", :bright, key_name, :reset, " from keyring vault:"]
+      |> IO.ANSI.format() |> IO.puts()
       IO.puts(plain_key)
     end
 
