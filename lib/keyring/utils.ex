@@ -3,6 +3,19 @@ defmodule Keyring.Utils do
   *keyring* utils.
   """
 
+  def puts(type, str) do
+    case type do
+      :error ->
+        [:bright, :red, "! Error: ", :reset, str] |> IO.ANSI.format() |> IO.puts()
+
+      :input ->
+        [:bright, "[*] ", :reset, str] |> IO.ANSI.format() |> IO.gets()
+
+      :hidden_input ->
+        [:bright, "[*] ", :reset, str] |> IO.ANSI.format() |> List.to_string() |> get_hidden_input()
+    end
+  end
+
   # Password prompt that hides input by every 1ms clearing
   # the line with stderr. See:
   # https://github.com/hexpm/hex/blob/1523f44e8966d77a2c71738629912ad59627b870/lib/mix/hex/utils.ex#L32-L58

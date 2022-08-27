@@ -10,6 +10,14 @@ defmodule Keyring.Crypt do
   @aes_key_length_bytes 32
   @aes_auth_data "AES256GCM"
 
+  # just a placeholder for random password generation
+  def generate_random_string(length) do
+    symbols = '0123456789abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@/.'
+    symbol_count = Enum.count(symbols)
+    s = for _ <- 1..length, into: "", do: <<Enum.at(symbols, :crypto.rand_uniform(0, symbol_count))>>
+    s
+  end
+
   def pbkdf2_hash(cleartext, salt, hash_len) when is_binary(salt) do
     Pbkdf2.generate(cleartext, salt, length: hash_len)
   end
@@ -20,15 +28,19 @@ defmodule Keyring.Crypt do
     {hash, kdf_salt}
   end
 
-  @spec encrypt_key(binary(), String.t()) :: {binary(), binary()}
+  @spec encrypt_key(binary(), String.t()) :: binary()
   def encrypt_key(master_key, cleartext) do
     kdf_salt = :crypto.strong_rand_bytes(@kdf_salt_bytes)
     aes_key = Pbkdf2.generate(master_key, kdf_salt, length: @aes_key_length_bytes)
-    {aes_256_gcm_encrypt(cleartext, aes_key), kdf_salt}
+    kdf_salt <> aes_256_gcm_encrypt(cleartext, aes_key)
+    |> :base64.encode()
   end
 
-  @spec decrypt_key(binary(), {binary(), binary()}) :: String.t()
-  def decrypt_key(master_key, {ciphertext, kdf_salt}) do
+  @spec decrypt_key(binary(), binary()) :: String.t()
+  def decrypt_key(master_key, ciphertext) do
+    ciphertext = ciphertext |> :base64.decode()
+    <<kdf_salt::binary-16, ciphertext::binary>> = ciphertext
+
     aes_key = Pbkdf2.generate(master_key, kdf_salt, length: @aes_key_length_bytes)
     aes_256_gcm_decrypt(ciphertext, aes_key)
   end

@@ -64,15 +64,10 @@ defmodule Keyring do
     end
   end
 
-  defp request_keyring_initialization do
-    IO.puts("keyring has not been initialized. Please, run `keyring init` before performing any other operation.")
-    System.halt(1)
-  end
-
   defp initialize_keyring do
     {:ok, io_device} = File.open(@master_key_hash_file, [:write])
 
-    input_master_key = IO.gets("Enter the master key that will be used to unlock the keyring vault: ")
+    input_master_key = Keyring.Utils.puts(:hidden_input, "Enter the master key that will be used to unlock the keyring vault: ")
     {master_key_hash, kdf_salt} = Crypt.pbkdf2_hash(input_master_key, 32, 64)
 
     master_hash = kdf_salt <> master_key_hash
@@ -95,7 +90,7 @@ defmodule Keyring do
     master_hash = master_hash |> :base64.decode()
     <<master_kdf_salt::binary-32, master_key_hash::binary-64>> = master_hash
 
-    input_master_key = Keyring.Utils.get_hidden_input("Enter master key to unlock keyring vault: ")
+    input_master_key = Keyring.Utils.puts(:hidden_input, "Enter master key to unlock keyring vault: ")
     input_master_key_hash = Crypt.pbkdf2_hash(input_master_key, master_kdf_salt, 64)
 
     master_key_hash = :base64.encode(master_key_hash)
