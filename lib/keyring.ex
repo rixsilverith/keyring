@@ -18,9 +18,7 @@ defmodule Keyring do
   def main(argv) do
     Application.put_env(:elixir, :ansi_enabled, true)
 
-    CLI.help()
-
-    argv |> CLI.parse() |> IO.inspect()
+    #argv |> CLI.parse() |> IO.inspect()
 
     argv = CLI.parse(argv)
     case argv do
@@ -97,7 +95,7 @@ defmodule Keyring do
     master_hash = master_hash |> :base64.decode()
     <<master_kdf_salt::binary-32, master_key_hash::binary-64>> = master_hash
 
-    input_master_key = IO.gets("Enter master key to unlock keyring vault: ")
+    input_master_key = Keyring.Utils.get_hidden_input("Enter master key to unlock keyring vault: ")
     input_master_key_hash = Crypt.pbkdf2_hash(input_master_key, master_kdf_salt, 64)
 
     master_key_hash = :base64.encode(master_key_hash)
