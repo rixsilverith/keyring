@@ -41,4 +41,32 @@ defmodule Keyring.Utils do
         loop(prompt)
     end
   end
+
+  def clipboard_copy(value) do
+    clipboard_copy(:os.type(), value)
+    {:ok, value}
+  end
+
+  def clipboard_clean() do
+    clipboard_copy("")
+  end
+
+  defp clipboard_copy({:unix, :darwin}, value) do
+    execute_command({"pbcopy", []}, value)
+  end
+
+  defp clipboard_copy({:unix, _}, value) do
+    execute_command({"xclip", ["-sel", "clip"]}, value)
+  end
+
+  defp execute_command({bin, args}, value) when is_binary(bin) and is_list(args) do
+    case System.find_executable(bin) do
+      nil -> {:error, "Cannot find #{bin}"}
+      path ->
+        port = Port.open({:spawn_executable, path}, [:binary, args: args])
+        send(port, {self(), {:command, value}})
+        send(port, {self(), :close})
+        :ok
+    end
+  end
 end

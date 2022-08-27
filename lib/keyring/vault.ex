@@ -37,8 +37,13 @@ defmodule Keyring.Vault do
     plain_key = Keyring.Crypt.decrypt_key(master_hash, encrypted_key)
 
     if Keyword.get(opts, :clipboard) do
-      ["Copied ", :bright, key_name, :reset, " key to the clipboard!"]
+      ["Copied ", :bright, key_name, :reset, " key to the clipboard! Clipboard will be cleaned in 5 secs"]
       |> IO.ANSI.format() |> IO.puts()
+      plain_key |> Keyring.Utils.clipboard_copy()
+
+
+      Port.open({:spawn, "sh lib/keyring/external/clean_clipboard.sh"}, [:binary])
+      |> Port.close()
     else
       IO.puts(plain_key)
     end
