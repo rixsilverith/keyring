@@ -1,5 +1,4 @@
 %{
   "ok": {:hex, :ok, "2.3.0", "0a3d513ec9038504dc5359d44e14fc14ef59179e625563a1a144199cdc3a6d30", [:mix], [], "hexpm", "f0347b3f8f115bf347c704184b33cf084f2943771273f2b98a3707a5fa43c4d5"},
-  "optimus": {:hex, :optimus, "0.3.0", "72754d1a06bab7b4b7f59b05622e442e5ab7909b9db5d8b01dc3d2792559fa9e", [:mix], [], "hexpm", "d0d026fdf068e461e1173c463ea2da15e109942135aa4e2490dd2dc9ef05946c"},
   "plug_crypto": {:hex, :plug_crypto, "1.2.3", "8f77d13aeb32bfd9e654cb68f0af517b371fb34c56c9f2b58fe3df1235c1251a", [:mix], [], "hexpm", "b5672099c6ad5c202c45f5a403f21a3411247f164e4a8fab056e5cd8a290f4a2"},
 }
