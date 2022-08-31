@@ -3,6 +3,12 @@ defmodule Keyring.Utils do
   *keyring* utils.
   """
 
+  def get_commit_hash do
+    System.cmd("git", ["rev-parse", "HEAD"])
+    |> elem(0)
+    |> String.trim()
+  end
+
   def puts(type, str) do
     case type do
       :error ->

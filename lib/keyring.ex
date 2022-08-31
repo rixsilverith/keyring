@@ -34,6 +34,8 @@ defmodule Keyring do
       {:reveal, key_name, args} ->
         is_initialized?() ~>> authenticate() ~>> Vault.retrieve_key(key_name, args) |> error_handler()
 
+      {:help, operation, _} -> Keyring.CLI.help_dispatcher(operation)
+
       other -> argv
     end
   end
