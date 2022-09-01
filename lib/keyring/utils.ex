@@ -75,4 +75,30 @@ defmodule Keyring.Utils do
         :ok
     end
   end
+
+  def to_yaml(file, map) do
+    yaml = parse_yaml(map)
+
+    {:ok, io_device} = File.open(file, [:write])
+    IO.write(io_device, yaml)
+    File.close(io_device)
+  end
+
+  defp parse_yaml(yaml_map, indent \\ "") do
+    yaml_map
+    |> Map.keys()
+    |> Enum.map(fn key ->
+      value = Map.fetch!(yaml_map, key)
+      cond do
+        is_bitstring(value) -> "#{indent}#{key}: #{value}"
+        is_number(value) -> "#{indent}#{key}: #{value}"
+        is_map(value) -> "#{indent}#{key}:\n#{parse_yaml(value, "#{indent} ")}"
+      end
+    end)
+    |> Enum.join("\n")
+  end
+
+  def from_yaml(path, opts \\ []) do
+    YamlElixir.read_from_file!(path, opts)
+  end
 end

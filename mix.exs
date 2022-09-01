@@ -18,6 +18,7 @@ defmodule Keyring.MixProject do
 
   defp deps do
     [
+      {:yaml_elixir, "~> 2.9"},
       {:plug_crypto, "~> 1.0"},
       {:ok, "~> 2.3"},
     ]
