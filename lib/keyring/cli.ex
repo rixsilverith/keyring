@@ -3,7 +3,7 @@ defmodule Keyring.CLI do
   Keyring CLI parser.
   """
 
-  #@keyring_operations [:init, :insert, :reveal]
+  @keyring_operations [:init, :insert, :reveal]
 
   def parse([operation | args]) do
     operation = operation |> String.to_existing_atom()
@@ -16,16 +16,16 @@ defmodule Keyring.CLI do
   end
 
   defp parse_init_operation(opts) do
-    strict_opts = [help: :boolean]
-    aliases = [h: :help]
+    strict_opts = []
+    aliases = []
 
     {opts, _, _} = OptionParser.parse(opts, aliases: aliases, strict: strict_opts)
     {:init, "", opts}
   end
 
   defp parse_insert_operation(opts) do
-    strict_opts = [help: :boolean]
-    aliases = [h: :help]
+    strict_opts = []
+    aliases = []
 
     [key_name | opts] = opts
     {opts, _, _} = OptionParser.parse(opts, aliases: aliases, strict: strict_opts)
@@ -33,8 +33,8 @@ defmodule Keyring.CLI do
   end
 
   defp parse_reveal_operation(opts) do
-    strict_opts = [help: :boolean, clipboard: :boolean, seconds: :integer]
-    aliases = [h: :help, c: :clipboard, s: :seconds]
+    strict_opts = [clipboard: :boolean, seconds: :integer]
+    aliases = [c: :clipboard, s: :seconds]
 
     [key_name | opts] = opts
     {opts, _, _} = OptionParser.parse(opts, aliases: aliases, strict: strict_opts)
@@ -47,20 +47,17 @@ defmodule Keyring.CLI do
 
   defp parse_help(_opts), do: {:help, :keyring, []}
 
-  def help_dispatcher(operation) do
-    case operation do
-      :keyring -> help()
-      :insert -> help_insert()
-      :reveal -> help_reveal()
-    end
-  end
-
-  defp help do
-    help = """
+  defp help_header do
+    """
     keyring: Minimal CLI utility for local key/password storage and management
     A detailed information page is available at https://github.com/rixsilverith/keyring
     Commit SHA1 hash: #{Keyring.Utils.get_commit_hash()}
+    """
+  end
 
+  def help(:keyring) do
+    """
+    #{help_header()}
     Usage: keyring <operation> [<options>...]
     where <operation> is one of the following:
 
@@ -74,12 +71,9 @@ defmodule Keyring.CLI do
     |> IO.puts()
   end
 
-  defp help_insert do
+  def help(:insert) do
     """
-    keyring: Minimal CLI utility for local key/password storage and management
-    A detailed information page is available at https://github.com/rixsilverith/keyring
-    Commit SHA1 hash: #{Keyring.Utils.get_commit_hash()}
-
+    #{help_header()}
     Usage: keyring insert <key_name>
 
     Insert a secret <key_name> into the keyring vault.
@@ -87,12 +81,9 @@ defmodule Keyring.CLI do
     |> IO.puts()
   end
 
-  defp help_reveal do
+  def help(:reveal) do
     """
-    keyring: Minimal CLI utility for local key/password storage and management
-    A detailed information page is available at https://github.com/rixsilverith/keyring
-    Commit SHA1 hash: #{Keyring.Utils.get_commit_hash()}
-
+    #{help_header()}
     Usage: keyring reveal <key_name> [-c|--clipboard [-s|--timeout <secs>]]
 
     Reveal the secret <key_name> from the keyring vault. Optionally, the secret
@@ -100,6 +91,8 @@ defmodule Keyring.CLI do
     by specifying the -c option. In that case, the clipboard is automatically cleared
     after a timeout (in seconds) provided with the -s option. If no timout is given,
     the clipboard will be cleared after 30 seconds.
+
+    Note that the -s option does nothing if the -c option is not provided.
     """
     |> IO.puts()
   end

@@ -6,10 +6,6 @@ defmodule Keyring do
   require OK
   use OK.Pipe
 
-  alias Keyring.Crypt
-  alias Keyring.CLI
-  alias Keyring.Vault
-
   @master_key_hash_file "auth_token"
 
   @doc """
@@ -20,7 +16,7 @@ defmodule Keyring do
 
     #argv |> CLI.parse() |> IO.inspect()
 
-    argv = CLI.parse(argv)
+    argv = Keyring.CLI.parse(argv)
     case argv do
       {:init, _, _} ->
         case is_initialized?() do
@@ -29,14 +25,14 @@ defmodule Keyring do
         end
 
       {:insert, key_name, args} ->
-        is_initialized?() ~>> authenticate() ~>> Vault.insert_key(key_name, args) |> error_handler()
+        is_initialized?() ~>> authenticate() ~>> Keyring.Vault.insert_key(key_name, args) |> error_handler()
 
       {:reveal, key_name, args} ->
-        is_initialized?() ~>> authenticate() ~>> Vault.retrieve_key(key_name, args) |> error_handler()
+        is_initialized?() ~>> authenticate() ~>> Keyring.Vault.retrieve_key(key_name, args) |> error_handler()
 
-      {:help, operation, _} -> Keyring.CLI.help_dispatcher(operation)
+      {:help, operation, _} -> Keyring.CLI.help(operation)
 
-      other -> argv
+      _ -> IO.inspect(argv)
     end
   end
 
@@ -70,7 +66,7 @@ defmodule Keyring do
     {:ok, io_device} = File.open(@master_key_hash_file, [:write])
 
     input_master_key = Keyring.Utils.puts(:hidden_input, "Enter the master key that will be used to unlock the keyring vault: ")
-    {master_key_hash, kdf_salt} = Crypt.pbkdf2_hash(input_master_key, 32, 64)
+    {master_key_hash, kdf_salt} = Keyring.Crypt.pbkdf2_hash(input_master_key, 32, 64)
 
     master_hash = kdf_salt <> master_key_hash
     master_hash = :base64.encode(master_hash)
@@ -93,16 +89,11 @@ defmodule Keyring do
     <<master_kdf_salt::binary-32, master_key_hash::binary-64>> = master_hash
 
     input_master_key = Keyring.Utils.puts(:hidden_input, "Enter master key to unlock keyring vault: ")
-    input_master_key_hash = Crypt.pbkdf2_hash(input_master_key, master_kdf_salt, 64)
-
-    master_key_hash = :base64.encode(master_key_hash)
-    input_master_key_hash = :base64.encode(input_master_key_hash)
+    input_master_key_hash = Keyring.Crypt.pbkdf2_hash(input_master_key, master_kdf_salt, 64)
 
     cond do
-      master_key_hash == input_master_key_hash ->
-        {:ok, master_hash}
-      true ->
-        {:error, :incorrect_master_key}
+      master_key_hash == input_master_key_hash -> {:ok, master_hash}
+      true -> {:error, :incorrect_master_key}
     end
   end
 end
