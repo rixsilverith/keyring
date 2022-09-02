@@ -14,9 +14,8 @@ defmodule Keyring.Vault do
     random_string = Keyring.Crypt.generate_random_string(32)
     encrypted_key = Keyring.Crypt.encrypt_key(master_hash, random_string)
 
-    {:ok, io_device} = File.open("vault/#{key_name}.key", [:write])
-    IO.write(io_device, encrypted_key)
-    File.close(io_device)
+    data = Map.new() |> Map.put("secret", encrypted_key)
+    Keyring.Utils.to_yaml("vault/#{key_name}.yaml", data)
 
     ["Key ", :bright, key_name, :reset, " inserted into the keyring vault"]
     |> IO.ANSI.format() |> IO.puts()
@@ -32,9 +31,8 @@ defmodule Keyring.Vault do
       System.halt(0)
     end
 
-    {:ok, io_device} = File.open("vault/#{key_name}.key", [:read])
-    encrypted_key = IO.read(io_device, :line)
-    plain_key = Keyring.Crypt.decrypt_key(master_hash, encrypted_key)
+    data = Keyring.Utils.from_yaml("vault/#{key_name}.yaml")
+    plain_key = Keyring.Crypt.decrypt_key(master_hash, data["secret"])
 
     if Keyword.get(opts, :clipboard) do
       clipboard_secs = Keyword.get(opts, :seconds)
@@ -65,7 +63,5 @@ defmodule Keyring.Vault do
     {:ok, :retrieved_key_successfully}
   end
 
-  defp exists_key(key_name) do
-    File.exists?("vault/#{key_name}.key")
-  end
+  defp exists_key(key_name), do: File.exists?("vault/#{key_name}.yaml")
 end

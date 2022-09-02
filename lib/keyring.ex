@@ -13,10 +13,8 @@ defmodule Keyring do
   """
   def main(argv) do
     Application.put_env(:elixir, :ansi_enabled, true)
-
-    #argv |> CLI.parse() |> IO.inspect()
-
     argv = Keyring.CLI.parse(argv)
+
     case argv do
       {:init, _, _} ->
         case is_initialized?() do
