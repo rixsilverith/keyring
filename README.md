@@ -9,7 +9,7 @@ be as simple and minimalist as possible while keeping keys and passwords secure.
 to encrypt and decrypt the stored secrets.
 - **PBKDF2.** *keyring* uses the PBKDF2-HMAC-SHA256 algorithm to derive the AES encryption/decryption public key
 for each secret from a previously established master secret.
-- **Simple storage format.** Each secret in the keyring vault is stored in its own separate file under the
+- **Simple storage format.** Each secret in the keyring vault is stored in its own separate file in YAML format under the
 `keyring/vault` folder, which can be easily backed up or version controlled using Git.
 - **Clipboard management.** When revealing a secret from the vault it can optionally be copied to the clipboard,
 which is cleared after a given timeout.
@@ -26,16 +26,33 @@ be used to store critical keys and passwords. Use at your own risk. You've been 
 ```bash
 keyring <operation> [<options>...]
 ```
-where `operation` is one of the following:
+where `operation` either `init`, `insert` or `reveal`. Each of them is detailed below.
 
-**Operation** | **Description**
---- | ---
-`init` | Initialize the keyring vault by providing a master secret used to encrypt and decrypt the stored secrets.
-`insert <key_name>` | Insert a secret with name `key_name` into the vault. The secret is generated automatically.
-`reveal <key_name> [-c\|--clipboard] [-s\|--seconds <secs>]` | Reveal the secret with `key_name`. If the `-c` option is given, the secret is copied to the clipboard, which is cleared after `secs` (default: 30) seconds if the `-s` option is provided.
-`help` | Show help message.
+> **Note** One can get specific help for each operation as `keyring help <operation>`. Running
+> `keyring help` gives a general help message for *keyring*.
 
-Note that the master secret must be provided to perform each operation.
+### Initializing the keyring vault
+
+A *keyring* vault must be initialized before storing any secrets in it. The vault is just a folder where the
+files containing the encrypted secrets are kept. Initialization is performed as `keyring init`. This will
+ask for a master secret to be entered, which is needed to afterwards unlock the vault each time an operation
+is performed on the keyring (for instance, revealing a stored secret).
+
+### Inserting a secret into the vault
+
+`keyring insert <secret_name> [-i|--input]` is used to insert a secret into the vault, which will be identified as `secret_name`. By default, a random string is generated and saved as the secret. However,
+this behaviour can be overriden by specifying the `-i` option. This way, the secret will be entered
+as `stdin`.
+
+As secrets are stored as YAML files, additional metadata can be attached to them (for instance, emails,
+usernames, etc.).
+
+### Revealing a secret from the vault
+
+A secret can be revealed with `keyring reveal <secret_name> [-c|--clipboard [-s|--seconds <secs>]]`,
+where `secret_name` is the secret identification. If the `-c` option is given, the secret will be copied
+to the clipboard, which is cleared after `secs` (default: 30) seconds if the `-s` option is provided,
+instead of being printed to `stdout`. Note that the`-s` option has no effect if `-c` is omitted.
 
 ---
 
