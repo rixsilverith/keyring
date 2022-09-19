@@ -11,8 +11,12 @@ defmodule Keyring.Vault do
       System.halt(0)
     end
 
-    random_string = Keyring.Crypt.generate_random_string(32)
-    encrypted_key = Keyring.Crypt.encrypt_key(master_hash, random_string)
+    cleartext = case Keyword.get(opts, :input) do
+      true -> Keyring.Utils.get_hidden_input("Insert secret to be stored: ") |> String.trim()
+      _ -> Keyring.Crypt.generate_random_string(32)
+    end
+
+    encrypted_key = Keyring.Crypt.encrypt_key(master_hash, cleartext)
 
     data = Map.new() |> Map.put("secret", encrypted_key)
     Keyring.Utils.to_yaml("vault/#{key_name}.yaml", data)

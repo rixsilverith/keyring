@@ -24,8 +24,8 @@ defmodule Keyring.CLI do
   end
 
   defp parse_insert_operation(opts) do
-    strict_opts = []
-    aliases = []
+    strict_opts = [input: :boolean]
+    aliases = [i: :input]
 
     [key_name | opts] = opts
     {opts, _, _} = OptionParser.parse(opts, aliases: aliases, strict: strict_opts)
@@ -62,7 +62,7 @@ defmodule Keyring.CLI do
     where <operation> is one of the following:
 
     init                                 Initialize the keyring vault.
-    insert <key_name>                    Insert a key into the keyring vault.
+    insert <key_name> [-i]               Insert a key into the keyring vault.
     reveal <key_name> [-c [-s <secs>]]   Reveal the key <key_name>.
     help [operation]                     Show this help message.
 
@@ -74,9 +74,10 @@ defmodule Keyring.CLI do
   def help(:insert) do
     """
     #{help_header()}
-    Usage: keyring insert <key_name>
+    Usage: keyring insert <key_name> [-i|--input]
 
-    Insert a secret <key_name> into the keyring vault.
+    Insert a secret <key_name> into the keyring vault. By default, a random secret is
+    generated. However, this behaviour can be overriden by providing the -i option.
     """
     |> IO.puts()
   end
