@@ -12,8 +12,11 @@ defmodule Keyring.CLI do
       :insert -> parse_insert_operation(args)
       :reveal -> parse_reveal_operation(args)
       :help -> parse_help(args)
+      _ -> parse_help([])
     end
   end
+
+  def parse([]), do: parse_help([])
 
   defp parse_init_operation(opts) do
     strict_opts = []
